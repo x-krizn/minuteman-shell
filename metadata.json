@@ -1,0 +1,6 @@
+{
+  "name": "Minuteman Virtual Gamepad",
+  "description": "Mobile virtual gamepad console, retro 8-bit LCD shell, and cartridge runner with built-in games and custom cartridge workshop.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

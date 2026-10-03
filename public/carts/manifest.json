@@ -1,0 +1,46 @@
+{
+  "catalogVersion": "1.0.0",
+  "updatedAt": "2026-10-03T09:43:00.000Z",
+  "cartridges": [
+    {
+      "id": "star_patrol",
+      "name": "STAR PATROL",
+      "version": "1.0",
+      "author": "Minuteman Arcade",
+      "description": "Arcade space shooter. A: Laser, B: Boost, D-Pad: Fly.",
+      "file": "/carts/star_patrol.cart.js"
+    },
+    {
+      "id": "tiny_rogue",
+      "name": "TINY ROGUE",
+      "version": "1.0",
+      "author": "Minuteman Dungeon",
+      "description": "Dungeon crawler RPG. A: Sword slash, D-Pad: Move.",
+      "file": "/carts/tiny_rogue.cart.js"
+    },
+    {
+      "id": "snake_99",
+      "name": "SNAKE 99",
+      "version": "1.0",
+      "author": "Minuteman Arcade",
+      "description": "Classic arcade snake. D-Pad: Turn.",
+      "file": "/carts/snake_99.cart.js"
+    },
+    {
+      "id": "pocket_jump",
+      "name": "POCKET JUMP",
+      "version": "1.0",
+      "author": "Minuteman Arcade",
+      "description": "Vertical platform hopper. D-Pad: Tilt, A: Boost.",
+      "file": "/carts/pocket_jump.cart.js"
+    },
+    {
+      "id": "template",
+      "name": "TEMPLATE",
+      "version": "0.1",
+      "author": "Minuteman Shell",
+      "description": "Original template cart: D-pad moves square, A toggles size.",
+      "file": "/carts/template.cart.js"
+    }
+  ]
+}
