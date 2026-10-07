@@ -22,10 +22,16 @@ export function createTemplateCartridge(): Cartridge {
     },
 
     update: (input: InputSnapshot, dt: number) => {
-      if (input.held.left) x -= SPEED * dt;
-      if (input.held.right) x += SPEED * dt;
-      if (input.held.up) y -= SPEED * dt;
-      if (input.held.down) y += SPEED * dt;
+      let sx = input.stick?.x || 0;
+      let sy = input.stick?.y || 0;
+      if (sx === 0 && sy === 0) {
+        if (input.held.left) sx = -1;
+        if (input.held.right) sx = 1;
+        if (input.held.up) sy = -1;
+        if (input.held.down) sy = 1;
+      }
+      x += sx * SPEED * dt;
+      y += sy * SPEED * dt;
       if (input.pressed.a) {
         big = !big;
         if (cartSurface) cartSurface.audio.beep(big ? 660 : 440);

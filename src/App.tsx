@@ -15,7 +15,7 @@ import {
 } from './types';
 import { CONSOLE_PALETTES } from './palettes';
 import { soundEngine } from './audio/soundEngine';
-import { cartridgeRegistry } from './cartridges/registry';
+import { cartridgeRegistry, loadCartridgeAssets } from './cartridges/registry';
 import { VirtualGamepad } from './components/VirtualGamepad';
 import { ScreenViewport } from './components/ScreenViewport';
 import { CartridgeWorkshopModal } from './components/CartridgeWorkshopModal';
@@ -50,6 +50,8 @@ const INITIAL_GAMEPAD_STATE: GamepadState = {
   b: false,
   x: false,
   y: false,
+  l: false,
+  r: false,
   start: false,
   select: false
 };
@@ -128,6 +130,7 @@ export default function App() {
   const [cartIndex, setCartIndex] = useState(0);
   const [settingsIndex, setSettingsIndex] = useState(0);
   const [activeCartridge, setActiveCartridge] = useState<Cartridge | null>(null);
+  const [isCartReady, setIsCartReady] = useState(false);
   const [cartSearchQuery, setCartSearchQuery] = useState('');
   const cartSearchQueryRef = useRef('');
 
@@ -141,6 +144,7 @@ export default function App() {
   const surfaceRef = useRef<CartridgeSurface | null>(null);
   const heldRef = useRef<GamepadState>({ ...INITIAL_GAMEPAD_STATE });
   const prevHeldRef = useRef<GamepadState>({ ...INITIAL_GAMEPAD_STATE });
+  const stickRef = useRef({ x: 0, y: 0 });
   const [heldDisplay, setHeldDisplay] = useState<GamepadState>({ ...INITIAL_GAMEPAD_STATE });
 
   const activeCartRef = useRef<Cartridge | null>(null);
@@ -216,6 +220,8 @@ export default function App() {
       else if (['KeyJ', 'KeyX'].includes(e.code)) key = 'b';
       else if (['KeyU', 'KeyC'].includes(e.code)) key = 'x';
       else if (['KeyI', 'KeyV'].includes(e.code)) key = 'y';
+      else if (['KeyQ'].includes(e.code)) key = 'l';
+      else if (['KeyE'].includes(e.code)) key = 'r';
       else if (['Enter'].includes(e.code)) key = 'start';
       else if (['ShiftLeft', 'ShiftRight', 'Tab'].includes(e.code)) key = 'select';
 
@@ -239,6 +245,8 @@ export default function App() {
       else if (['KeyJ', 'KeyX'].includes(e.code)) key = 'b';
       else if (['KeyU', 'KeyC'].includes(e.code)) key = 'x';
       else if (['KeyI', 'KeyV'].includes(e.code)) key = 'y';
+      else if (['KeyQ'].includes(e.code)) key = 'l';
+      else if (['KeyE'].includes(e.code)) key = 'r';
       else if (['Enter'].includes(e.code)) key = 'start';
       else if (['ShiftLeft', 'ShiftRight', 'Tab'].includes(e.code)) key = 'select';
 
@@ -269,7 +277,7 @@ export default function App() {
     });
 
     prevHeldRef.current = held;
-    return { held, pressed, released };
+    return { held, pressed, released, stick: { ...stickRef.current } };
   };
 
   // Stop running cartridge
@@ -278,7 +286,12 @@ export default function App() {
     const cart = activeCartRef.current;
     activeCartRef.current = null;
     activeReadyRef.current = false;
+    setIsCartReady(false);
     setActiveCartridge(null);
+
+    if (surfaceRef.current) {
+      surfaceRef.current.assets = {};
+    }
 
     if (cart) {
       // Auto-persist cartridge state if supported
@@ -309,37 +322,70 @@ export default function App() {
     activeCartRef.current = cart;
     setActiveCartridge(cart);
     activeReadyRef.current = false;
+    setIsCartReady(false);
+    setShellTitle('');
+    setShellLines(['LOADING...']);
+    setShellSelectedIndex(-1);
     const token = ++runTokenRef.current;
 
     const surface = surfaceRef.current;
     if (surface) {
       surface.g.clearRect(0, 0, surface.width, surface.height);
+      surface.assets = {};
     }
 
-    try {
-      soundEngine.powerup();
-      const res = typeof cart.init === 'function' && surface ? cart.init(surface) : undefined;
-      if (res && typeof (res as Promise<void>).then === 'function') {
-        (res as Promise<void>).then(
-          () => {
-            if (token === runTokenRef.current) activeReadyRef.current = true;
-          },
-          (e: unknown) => {
-            if (token === runTokenRef.current) {
-              cartridgeRegistry.logError(`${cart.id} init async: ${String(e)}`);
-              stopCart();
-              setCurrentScreen('debug');
+    const runInit = () => {
+      try {
+        soundEngine.powerup();
+        const res = typeof cart.init === 'function' && surface ? cart.init(surface) : undefined;
+        if (res && typeof (res as Promise<void>).then === 'function') {
+          (res as Promise<void>).then(
+            () => {
+              if (token === runTokenRef.current) {
+                activeReadyRef.current = true;
+                setIsCartReady(true);
+              }
+            },
+            (e: unknown) => {
+              if (token === runTokenRef.current) {
+                cartridgeRegistry.logError(`${cart.id} init async: ${String(e)}`);
+                stopCart();
+                setCurrentScreen('debug');
+              }
             }
-          }
-        );
-      } else {
-        activeReadyRef.current = true;
+          );
+        } else {
+          activeReadyRef.current = true;
+          setIsCartReady(true);
+        }
+      } catch (e: unknown) {
+        cartridgeRegistry.logError(`${cart.id} init: ${String(e)}`);
+        stopCart();
+        setCurrentScreen('debug');
       }
-    } catch (e: unknown) {
-      cartridgeRegistry.logError(`${cart.id} init: ${String(e)}`);
-      stopCart();
-      setCurrentScreen('debug');
+    };
+
+    if (!cart.assets) {
+      runInit();
+      return;
     }
+
+    loadCartridgeAssets(cart)
+      .then(assets => {
+        if (token === runTokenRef.current) {
+          if (surfaceRef.current) {
+            surfaceRef.current.assets = assets;
+          }
+          runInit();
+        }
+      })
+      .catch(e => {
+        if (token === runTokenRef.current) {
+          cartridgeRegistry.logError(`${cart.id} assets: ${String(e)}`);
+          stopCart();
+          setCurrentScreen('debug');
+        }
+      });
   }, [stopCart]);
 
   // Canvas Ready callback
@@ -348,11 +394,13 @@ export default function App() {
     const g = canvas.getContext('2d');
     if (g) {
       g.imageSmoothingEnabled = false;
+      const currentAssets = surfaceRef.current?.assets || {};
       surfaceRef.current = cartridgeRegistry.prepareSurfaceABI({
         g,
         width: 160,
         height: 144,
         audio: soundEngine,
+        assets: currentAssets,
         save: (data: unknown) => {
           const c = activeCartRef.current;
           if (c) {
@@ -431,7 +479,12 @@ export default function App() {
           return;
         }
 
-        if (!activeReadyRef.current) return;
+        if (!activeReadyRef.current) {
+          setShellTitle('');
+          setShellLines(['LOADING...']);
+          setShellSelectedIndex(-1);
+          return;
+        }
 
         const surface = surfaceRef.current;
         if (surface) {
@@ -918,7 +971,7 @@ export default function App() {
         {/* 3.2 SCREEN VIEWPORT */}
         <ScreenViewport
           palette={palette}
-          isCartridgeRunning={activeCartridge !== null}
+          isCartridgeRunning={activeCartridge !== null && isCartReady}
           scanlines={scanlines}
           shellTitle={shellTitle}
           shellLines={shellLines}
@@ -956,6 +1009,9 @@ export default function App() {
           palette={palette}
           held={heldDisplay}
           onButtonChange={handleButtonChange}
+          onStickChange={(s) => {
+            stickRef.current = s;
+          }}
           showKeyHints={showKeyHints}
           hapticsEnabled={haptics}
         />

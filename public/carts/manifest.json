@@ -1,7 +1,23 @@
 {
   "catalogVersion": "1.0.0",
-  "updatedAt": "2026-10-03T09:43:00.000Z",
+  "updatedAt": "2026-10-07T09:42:00.000Z",
   "cartridges": [
+    {
+      "id": "knight",
+      "name": "KNIGHT (PROTO)",
+      "version": "0.3",
+      "author": "Minuteman Metroidvania",
+      "description": "Subterranean metroidvania: gravity, slimes, bats, sword combos, relics, and procedural dungeons.",
+      "file": "/carts/knight.cart.js"
+    },
+    {
+      "id": "walk",
+      "name": "WALK TEST",
+      "version": "0.1",
+      "author": "Minuteman Shell",
+      "description": "Proves asset loader. Knight walks wherever the stick points, playing 3-frame walk cycle.",
+      "file": "/carts/walk.cart.js"
+    },
     {
       "id": "star_patrol",
       "name": "STAR PATROL",

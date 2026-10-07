@@ -29,6 +29,18 @@ export const ScreenViewport: React.FC<ScreenViewportProps> = ({
   const viewportRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const textContainerRef = useRef<HTMLDivElement>(null);
+  const selectedLineRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll viewport with current selection when content exceeds visible bounds
+  useEffect(() => {
+    if (selectedLineRef.current && textContainerRef.current) {
+      selectedLineRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest'
+      });
+    }
+  }, [shellSelectedIndex, shellLines]);
 
   const fitCanvas = useCallback(() => {
     const vp = viewportRef.current;
@@ -86,21 +98,24 @@ export const ScreenViewport: React.FC<ScreenViewportProps> = ({
       {/* Text layer for Shell Menus / Splash / HowTo / Debug / Settings */}
       {!isCartridgeRunning && (
         <div
+          ref={textContainerRef}
           id="screen-text"
-          className="text-center p-2 max-w-full max-h-full overflow-hidden select-none font-normal"
+          className="text-center p-2 max-w-full max-h-full overflow-y-auto select-none font-normal scroll-smooth w-full"
           style={{
             color: palette.screenText,
-            letterSpacing: '2px'
+            letterSpacing: '2px',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none'
           }}
         >
           {shellTitle && (
-            <div className="ui-title mb-2 text-xs font-bold tracking-wider opacity-90 border-b border-current/30 pb-1">
+            <div className="ui-title mb-2 text-xs font-bold tracking-wider opacity-90 border-b border-current/30 pb-1 sticky top-0 bg-inherit z-10">
               {shellTitle}
             </div>
           )}
 
           {showSearch && (
-            <div className="mb-2 px-2 flex items-center gap-1.5 w-full max-w-[190px] mx-auto">
+            <div className="mb-2 px-2 flex items-center gap-1.5 w-full max-w-[190px] mx-auto sticky top-6 z-10">
               <div
                 className="flex-1 flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px]"
                 style={{
@@ -131,13 +146,14 @@ export const ScreenViewport: React.FC<ScreenViewportProps> = ({
             </div>
           )}
           {shellLines && (
-            <div className="flex flex-col gap-1 text-[11px] leading-relaxed">
+            <div className="flex flex-col gap-1 text-[11px] leading-relaxed py-1">
               {shellLines.map((line, idx) => {
                 const isSelected = idx === shellSelectedIndex;
                 return (
                   <div
                     key={idx}
-                    className={`ui-line px-2 py-0.5 rounded transition-colors whitespace-nowrap ${
+                    ref={isSelected ? selectedLineRef : undefined}
+                    className={`ui-line px-2 py-0.5 rounded transition-colors whitespace-nowrap scroll-m-2 ${
                       isSelected ? 'font-bold' : 'opacity-85'
                     }`}
                     style={

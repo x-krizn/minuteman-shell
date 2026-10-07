@@ -17,8 +17,10 @@ export const KeyboardGuideModal: React.FC<KeyboardGuideModalProps> = ({ isOpen, 
     { button: 'B BUTTON', keys: 'J  or  X' },
     { button: 'X BUTTON', keys: 'U  or  C' },
     { button: 'Y BUTTON', keys: 'I  or  V' },
+    { button: 'L SHOULDER', keys: 'Q' },
+    { button: 'R SHOULDER', keys: 'E' },
     { button: 'START', keys: 'Enter' },
-    { button: 'SELECT', keys: 'Shift  or  Tab' },
+    { button: 'SELECT / SHIFT', keys: 'Shift  or  Tab' },
     { button: 'DEV TOOLKIT', keys: '` (Backtick)  or  F2' },
     { button: 'LEAVE GAME', keys: 'START + SELECT together' }
   ];

@@ -16,6 +16,7 @@ const STARTER_CODE = `// MINUTEMAN CUSTOM CARTRIDGE
   let score = 0;
   let targetX = 40;
   let targetY = 40;
+  let audioEngine = null;
 
   Minuteman.register({
     id: 'coin_catcher',
@@ -24,6 +25,7 @@ const STARTER_CODE = `// MINUTEMAN CUSTOM CARTRIDGE
     description: 'Catch coins before time runs out!',
 
     init: (surface) => {
+      audioEngine = surface.audio;
       x = surface.width / 2;
       y = surface.height / 2;
       score = 0;
@@ -47,7 +49,7 @@ const STARTER_CODE = `// MINUTEMAN CUSTOM CARTRIDGE
         score += 10;
         targetX = 15 + Math.random() * 130;
         targetY = 20 + Math.random() * 105;
-        if (surface.audio) surface.audio.coin();
+        if (audioEngine) audioEngine.coin();
       }
     },
 

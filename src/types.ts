@@ -7,15 +7,45 @@ export type GamepadButtonKey =
   | 'b'
   | 'x'
   | 'y'
+  | 'l'
+  | 'r'
   | 'start'
   | 'select';
 
 export type GamepadState = Record<GamepadButtonKey, boolean>;
 
+export interface AnalogStick {
+  x: number;
+  y: number;
+}
+
 export interface InputSnapshot {
   held: GamepadState;
   pressed: GamepadState;
   released: GamepadState;
+  stick: AnalogStick;
+}
+
+export interface StripAssetSpec {
+  src: string;
+  cw: number;
+  ch: number;
+  frames: number;
+  rows?: number;
+  fps?: number;
+  ax?: number;
+  ay?: number;
+}
+
+export interface StripAsset {
+  id: string;
+  cw: number;
+  ch: number;
+  frames: number;
+  rows: number;
+  fps: number;
+  frameAt: (t: number) => number;
+  draw: (g: CanvasRenderingContext2D, i: number, x: number, y: number, flipX?: boolean) => void;
 }
 
 export interface SoundEngine {
@@ -42,6 +72,7 @@ export interface CartridgeSurface {
   audio: SoundEngine;
   save: (data: unknown) => boolean;
   load: () => unknown | null;
+  assets: Record<string, StripAsset>;
 }
 
 export interface Cartridge {
@@ -50,6 +81,7 @@ export interface Cartridge {
   version?: string;
   author?: string;
   description?: string;
+  assets?: Record<string, StripAssetSpec>;
   init?: (surface: CartridgeSurface) => void | Promise<void>;
   update: (input: InputSnapshot, dt: number) => void;
   draw: (surface: CartridgeSurface) => void;

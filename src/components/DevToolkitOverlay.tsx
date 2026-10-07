@@ -385,41 +385,62 @@ export const DevToolkitOverlay: React.FC<DevToolkitOverlayProps> = ({
 
                   {/* Action Diamond visual */}
                   <div className="space-y-1 text-center">
-                    <span className="text-[9px] text-emerald-600 uppercase block">ABXY</span>
-                    <div className="inline-grid grid-cols-3 grid-rows-3 gap-1 w-16 h-16 p-1 bg-black/60 rounded border border-emerald-950">
-                      <div />
-                      <div
-                        className={`rounded-sm flex items-center justify-center text-[8px] font-bold ${
-                          heldState.x ? 'bg-[#3388ff] text-white shadow-md' : 'bg-emerald-950/40 text-emerald-700'
-                        }`}
-                      >
-                        X
+                    <span className="text-[9px] text-emerald-600 uppercase block">ACTIONS (6-BTN)</span>
+                    <div className="flex flex-col gap-1 items-center">
+                      {/* L & R shoulder row */}
+                      <div className="flex gap-2">
+                        <div
+                          className={`w-6 h-4 rounded text-[8px] flex items-center justify-center font-bold ${
+                            heldState.l ? 'bg-white text-black shadow-md' : 'bg-black/60 text-emerald-700 border border-emerald-950'
+                          }`}
+                        >
+                          L
+                        </div>
+                        <div
+                          className={`w-6 h-4 rounded text-[8px] flex items-center justify-center font-bold ${
+                            heldState.r ? 'bg-white text-black shadow-md' : 'bg-black/60 text-emerald-700 border border-emerald-950'
+                          }`}
+                        >
+                          R
+                        </div>
                       </div>
-                      <div />
-                      <div
-                        className={`rounded-sm flex items-center justify-center text-[8px] font-bold ${
-                          heldState.y ? 'bg-[#ff4444] text-white shadow-md' : 'bg-emerald-950/40 text-emerald-700'
-                        }`}
-                      >
-                        Y
+
+                      {/* YXBA diamond */}
+                      <div className="inline-grid grid-cols-3 grid-rows-3 gap-1 w-16 h-16 p-1 bg-black/60 rounded border border-emerald-950">
+                        <div />
+                        <div
+                          className={`rounded-sm flex items-center justify-center text-[8px] font-bold ${
+                            heldState.y ? 'bg-[#ffff96] text-black shadow-md' : 'bg-emerald-950/40 text-emerald-700'
+                          }`}
+                        >
+                          Y
+                        </div>
+                        <div />
+                        <div
+                          className={`rounded-sm flex items-center justify-center text-[8px] font-bold ${
+                            heldState.x ? 'bg-[#9696ff] text-white shadow-md' : 'bg-emerald-950/40 text-emerald-700'
+                          }`}
+                        >
+                          X
+                        </div>
+                        <div className="bg-emerald-950/20" />
+                        <div
+                          className={`rounded-sm flex items-center justify-center text-[8px] font-bold ${
+                            heldState.b ? 'bg-[#ff0000] text-white shadow-md' : 'bg-emerald-950/40 text-emerald-700'
+                          }`}
+                        >
+                          B
+                        </div>
+                        <div />
+                        <div
+                          className={`rounded-sm flex items-center justify-center text-[8px] font-bold ${
+                            heldState.a ? 'bg-[#7bab7b] text-black shadow-md' : 'bg-emerald-950/40 text-emerald-700'
+                          }`}
+                        >
+                          A
+                        </div>
+                        <div />
                       </div>
-                      <div className="bg-emerald-950/20" />
-                      <div
-                        className={`rounded-sm flex items-center justify-center text-[8px] font-bold ${
-                          heldState.a ? 'bg-[#00dd44] text-black shadow-md' : 'bg-emerald-950/40 text-emerald-700'
-                        }`}
-                      >
-                        A
-                      </div>
-                      <div />
-                      <div
-                        className={`rounded-sm flex items-center justify-center text-[8px] font-bold ${
-                          heldState.b ? 'bg-[#ffaa00] text-black shadow-md' : 'bg-emerald-950/40 text-emerald-700'
-                        }`}
-                      >
-                        B
-                      </div>
-                      <div />
                     </div>
                   </div>
                 </div>
@@ -428,21 +449,21 @@ export const DevToolkitOverlay: React.FC<DevToolkitOverlayProps> = ({
                 <div className="flex items-center justify-center gap-3 text-[10px]">
                   <div
                     className={`px-3 py-1 rounded border ${
-                      heldState.select
-                        ? 'bg-emerald-400 text-black border-emerald-400 font-bold'
-                        : 'bg-black/40 text-emerald-700 border-emerald-950'
-                    }`}
-                  >
-                    SELECT
-                  </div>
-                  <div
-                    className={`px-3 py-1 rounded border ${
                       heldState.start
                         ? 'bg-emerald-400 text-black border-emerald-400 font-bold'
                         : 'bg-black/40 text-emerald-700 border-emerald-950'
                     }`}
                   >
                     START
+                  </div>
+                  <div
+                    className={`px-3 py-1 rounded border ${
+                      heldState.select
+                        ? 'bg-emerald-400 text-black border-emerald-400 font-bold'
+                        : 'bg-black/40 text-emerald-700 border-emerald-950'
+                    }`}
+                  >
+                    SHIFT (SELECT)
                   </div>
                 </div>
               </div>

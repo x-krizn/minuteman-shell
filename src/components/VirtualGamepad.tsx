@@ -5,6 +5,7 @@ interface VirtualGamepadProps {
   palette: ConsolePalette;
   held: GamepadState;
   onButtonChange: (key: GamepadButtonKey, isDown: boolean) => void;
+  onStickChange?: (stick: { x: number; y: number }) => void;
   showKeyHints?: boolean;
   hapticsEnabled?: boolean;
 }
@@ -13,6 +14,7 @@ export const VirtualGamepad: React.FC<VirtualGamepadProps> = ({
   palette,
   held,
   onButtonChange,
+  onStickChange,
   showKeyHints = false,
   hapticsEnabled = true
 }) => {
@@ -29,11 +31,34 @@ export const VirtualGamepad: React.FC<VirtualGamepadProps> = ({
     }
   }, [hapticsEnabled]);
 
-  // Touch and pointer sliding hit-test for D-Pad
+  // Touch and pointer sliding hit-test for D-Pad with analog stick support
   const processDpadPoint = useCallback((clientX: number, clientY: number) => {
     const el = document.elementFromPoint(clientX, clientY);
     const dpadKeys: GamepadButtonKey[] = ['up', 'down', 'left', 'right'];
     const active = new Set<GamepadButtonKey>();
+
+    const dpadEl = dpadRef.current;
+    if (dpadEl) {
+      const r = dpadEl.getBoundingClientRect();
+      const radius = r.width * 0.41;
+      const dx = clientX - (r.left + r.width / 2);
+      const dy = clientY - (r.top + r.height / 2);
+      const nx = dx / radius;
+      const ny = dy / radius;
+      const len = Math.hypot(nx, ny);
+      if (len > 0.2) {
+        const out = Math.min(1, (len - 0.2) / 0.8);
+        const sx = (nx / len) * out;
+        const sy = (ny / len) * out;
+        onStickChange?.({ x: sx, y: sy });
+        if (sx < -0.4) active.add('left');
+        if (sx > 0.4) active.add('right');
+        if (sy < -0.4) active.add('up');
+        if (sy > 0.4) active.add('down');
+      } else {
+        onStickChange?.({ x: 0, y: 0 });
+      }
+    }
 
     if (el && el.classList.contains('dpad-btn')) {
       const key = el.getAttribute('data-key') as GamepadButtonKey | null;
@@ -49,16 +74,17 @@ export const VirtualGamepad: React.FC<VirtualGamepadProps> = ({
         if (isDown) triggerHaptic();
       }
     });
-  }, [held, onButtonChange, triggerHaptic]);
+  }, [held, onButtonChange, onStickChange, triggerHaptic]);
 
   const clearDpad = useCallback(() => {
+    onStickChange?.({ x: 0, y: 0 });
     ['up', 'down', 'left', 'right'].forEach(k => {
       const key = k as GamepadButtonKey;
       if (held[key]) {
         onButtonChange(key, false);
       }
     });
-  }, [held, onButtonChange]);
+  }, [held, onButtonChange, onStickChange]);
 
   useEffect(() => {
     const dpadEl = dpadRef.current;
@@ -256,128 +282,142 @@ export const VirtualGamepad: React.FC<VirtualGamepadProps> = ({
         </div>
       </div>
 
-      {/* 3.3.2 ACTION BUTTON ASSEMBLY (ABXY) */}
+      {/* 3.3.2 ACTION BUTTON ASSEMBLY (L R Y X B A) */}
       <div className="flex items-center justify-center">
-        <div id="action-container" className="relative w-[150px] h-[150px]">
-          {/* Y (top-left) */}
+        <div id="action-container" className="relative w-[156px] h-[156px]">
+          {/* L (top-left shoulder) */}
+          <div
+            id="btn-l"
+            data-key="l"
+            className={`action-btn btn-tactile absolute top-[4px] left-[10px] w-[36px] h-[36px] rounded-full flex flex-col items-center justify-center text-white font-bold cursor-pointer select-none text-xs border-2 ${
+              held.l ? 'active' : ''
+            }`}
+            style={{
+              backgroundColor: held.l ? '#5a5a5a' : '#7d7d7d',
+              borderColor: '#434343',
+              boxShadow: held.l ? '0 1px 0 #434343' : '0 3px 0 #434343',
+              transform: held.l ? 'translateY(2px)' : 'none'
+            }}
+            {...bindDiscreteButton('l')}
+          >
+            <span>L</span>
+            {showKeyHints && (
+              <span className="text-[6px] text-white/70 font-mono -mt-0.5 pointer-events-none">Q</span>
+            )}
+          </div>
+
+          {/* R (top-right shoulder) */}
+          <div
+            id="btn-r"
+            data-key="r"
+            className={`action-btn btn-tactile absolute top-[4px] right-[10px] w-[36px] h-[36px] rounded-full flex flex-col items-center justify-center text-white font-bold cursor-pointer select-none text-xs border-2 ${
+              held.r ? 'active' : ''
+            }`}
+            style={{
+              backgroundColor: held.r ? '#5a5a5a' : '#7d7d7d',
+              borderColor: '#434343',
+              boxShadow: held.r ? '0 1px 0 #434343' : '0 3px 0 #434343',
+              transform: held.r ? 'translateY(2px)' : 'none'
+            }}
+            {...bindDiscreteButton('r')}
+          >
+            <span>R</span>
+            {showKeyHints && (
+              <span className="text-[6px] text-white/70 font-mono -mt-0.5 pointer-events-none">E</span>
+            )}
+          </div>
+
+          {/* Y (upper-middle) */}
           <div
             id="btn-y"
             data-key="y"
-            className={`action-btn btn-tactile absolute top-[10px] left-[10px] w-[48px] h-[48px] rounded-full flex flex-col items-center justify-center text-white font-bold cursor-pointer select-none text-base border-2 ${
+            className={`action-btn btn-tactile absolute top-[36px] left-[59px] w-[38px] h-[38px] rounded-full flex flex-col items-center justify-center text-black font-bold cursor-pointer select-none text-sm border-2 ${
               held.y ? 'active' : ''
             }`}
             style={{
-              backgroundColor: held.y ? palette.actionBtnActive : palette.actionBtn,
-              borderColor: palette.actionShadow,
-              boxShadow: held.y
-                ? `0 2px 0 ${palette.actionShadow}`
-                : `0 4px 0 ${palette.actionShadow}`,
+              backgroundColor: held.y ? '#ffff96' : '#c8c864',
+              borderColor: '#6b6b36',
+              boxShadow: held.y ? '0 1px 0 #6b6b36' : '0 3px 0 #6b6b36',
               transform: held.y ? 'translateY(2px)' : 'none'
             }}
             {...bindDiscreteButton('y')}
           >
             <span>Y</span>
             {showKeyHints && (
-              <span className="text-[7px] text-white/70 font-mono -mt-1 pointer-events-none">I/V</span>
+              <span className="text-[6px] text-black/70 font-mono -mt-0.5 pointer-events-none">I/V</span>
             )}
           </div>
 
-          {/* X (top-right) */}
+          {/* X (middle-left) */}
           <div
             id="btn-x"
             data-key="x"
-            className={`action-btn btn-tactile absolute top-[10px] right-[10px] w-[48px] h-[48px] rounded-full flex flex-col items-center justify-center text-white font-bold cursor-pointer select-none text-base border-2 ${
+            className={`action-btn btn-tactile absolute top-[68px] left-[14px] w-[38px] h-[38px] rounded-full flex flex-col items-center justify-center text-white font-bold cursor-pointer select-none text-sm border-2 ${
               held.x ? 'active' : ''
             }`}
             style={{
-              backgroundColor: held.x ? palette.actionBtnActive : palette.actionBtn,
-              borderColor: palette.actionShadow,
-              boxShadow: held.x
-                ? `0 2px 0 ${palette.actionShadow}`
-                : `0 4px 0 ${palette.actionShadow}`,
+              backgroundColor: held.x ? '#9696ff' : '#6464c8',
+              borderColor: '#36366b',
+              boxShadow: held.x ? '0 1px 0 #36366b' : '0 3px 0 #36366b',
               transform: held.x ? 'translateY(2px)' : 'none'
             }}
             {...bindDiscreteButton('x')}
           >
             <span>X</span>
             {showKeyHints && (
-              <span className="text-[7px] text-white/70 font-mono -mt-1 pointer-events-none">U/C</span>
+              <span className="text-[6px] text-white/70 font-mono -mt-0.5 pointer-events-none">U/C</span>
             )}
           </div>
 
-          {/* B (bottom-left) */}
+          {/* B (middle-right) */}
           <div
             id="btn-b"
             data-key="b"
-            className={`action-btn btn-tactile absolute bottom-[10px] left-[10px] w-[48px] h-[48px] rounded-full flex flex-col items-center justify-center text-white font-bold cursor-pointer select-none text-base border-2 ${
+            className={`action-btn btn-tactile absolute top-[68px] right-[14px] w-[38px] h-[38px] rounded-full flex flex-col items-center justify-center text-white font-bold cursor-pointer select-none text-sm border-2 ${
               held.b ? 'active' : ''
             }`}
             style={{
-              backgroundColor: held.b ? palette.actionBtnActive : palette.actionBtn,
-              borderColor: palette.actionShadow,
-              boxShadow: held.b
-                ? `0 2px 0 ${palette.actionShadow}`
-                : `0 4px 0 ${palette.actionShadow}`,
+              backgroundColor: held.b ? '#ff0000' : '#bc0000',
+              borderColor: '#650000',
+              boxShadow: held.b ? '0 1px 0 #650000' : '0 3px 0 #650000',
               transform: held.b ? 'translateY(2px)' : 'none'
             }}
             {...bindDiscreteButton('b')}
           >
             <span>B</span>
             {showKeyHints && (
-              <span className="text-[7px] text-white/70 font-mono -mt-1 pointer-events-none">J/X</span>
+              <span className="text-[6px] text-white/70 font-mono -mt-0.5 pointer-events-none">J/X</span>
             )}
           </div>
 
-          {/* A (bottom-right) */}
+          {/* A (bottom-center) */}
           <div
             id="btn-a"
             data-key="a"
-            className={`action-btn btn-tactile absolute bottom-[10px] right-[10px] w-[48px] h-[48px] rounded-full flex flex-col items-center justify-center text-white font-bold cursor-pointer select-none text-base border-2 ${
+            className={`action-btn btn-tactile absolute bottom-[6px] left-[59px] w-[38px] h-[38px] rounded-full flex flex-col items-center justify-center text-white font-bold cursor-pointer select-none text-sm border-2 ${
               held.a ? 'active' : ''
             }`}
             style={{
-              backgroundColor: held.a ? palette.actionBtnActive : palette.actionBtn,
-              borderColor: palette.actionShadow,
-              boxShadow: held.a
-                ? `0 2px 0 ${palette.actionShadow}`
-                : `0 4px 0 ${palette.actionShadow}`,
+              backgroundColor: held.a ? '#7bab7b' : '#527252',
+              borderColor: '#2c3d2c',
+              boxShadow: held.a ? '0 1px 0 #2c3d2c' : '0 3px 0 #2c3d2c',
               transform: held.a ? 'translateY(2px)' : 'none'
             }}
             {...bindDiscreteButton('a')}
           >
             <span>A</span>
             {showKeyHints && (
-              <span className="text-[7px] text-white/70 font-mono -mt-1 pointer-events-none">K/Z</span>
+              <span className="text-[6px] text-white/70 font-mono -mt-0.5 pointer-events-none">K/Z</span>
             )}
           </div>
         </div>
       </div>
 
-      {/* 3.3.3 SYSTEM BUTTON ASSEMBLY (SELECT / START) */}
+      {/* 3.3.3 SYSTEM BUTTON ASSEMBLY (SHIFT / START) */}
       <div
         id="system-container"
         className="col-span-2 flex justify-center items-center gap-9 pt-2 pb-3"
       >
-        {/* SELECT */}
-        <div className="pill-btn-wrapper flex flex-col items-center">
-          <div
-            id="btn-select"
-            data-key="select"
-            className={`pill-btn btn-tactile w-[60px] h-[16px] rounded-full border-2 border-black/40 cursor-pointer ${
-              held.select ? 'active' : ''
-            }`}
-            style={{
-              backgroundColor: held.select ? '#757575' : '#4b4b4b',
-              transform: 'rotate(-25deg)',
-              boxShadow: held.select ? 'none' : '0 1px 2px rgba(0,0,0,0.3)'
-            }}
-            {...bindDiscreteButton('select')}
-          />
-          <span className="pill-label text-[10px] font-bold text-black/70 tracking-wider mt-2.5">
-            SELECT {showKeyHints && <span className="text-[8px] opacity-70">[Shift]</span>}
-          </span>
-        </div>
-
         {/* START */}
         <div className="pill-btn-wrapper flex flex-col items-center">
           <div
@@ -395,6 +435,26 @@ export const VirtualGamepad: React.FC<VirtualGamepadProps> = ({
           />
           <span className="pill-label text-[10px] font-bold text-black/70 tracking-wider mt-2.5">
             START {showKeyHints && <span className="text-[8px] opacity-70">[Enter]</span>}
+          </span>
+        </div>
+
+        {/* SHIFT (SELECT) */}
+        <div className="pill-btn-wrapper flex flex-col items-center">
+          <div
+            id="btn-select"
+            data-key="select"
+            className={`pill-btn btn-tactile w-[60px] h-[16px] rounded-full border-2 border-black/40 cursor-pointer ${
+              held.select ? 'active' : ''
+            }`}
+            style={{
+              backgroundColor: held.select ? '#757575' : '#4b4b4b',
+              transform: 'rotate(-25deg)',
+              boxShadow: held.select ? 'none' : '0 1px 2px rgba(0,0,0,0.3)'
+            }}
+            {...bindDiscreteButton('select')}
+          />
+          <span className="pill-label text-[10px] font-bold text-black/70 tracking-wider mt-2.5">
+            SHIFT {showKeyHints && <span className="text-[8px] opacity-70">[Tab]</span>}
           </span>
         </div>
       </div>

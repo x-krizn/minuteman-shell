@@ -1,9 +1,11 @@
-import { Cartridge, CartridgeSurface } from '../types';
+import { Cartridge, CartridgeSurface, StripAsset, StripAssetSpec } from '../types';
 import { createPocketJumpCartridge } from './pocketJump';
 import { createSnake99Cartridge } from './snake99';
 import { createStarPatrolCartridge } from './starPatrol';
 import { createTemplateCartridge } from './template';
 import { createTinyRogueCartridge } from './tinyRogue';
+import { createWalkCartridge } from './walk';
+import { createKnightCartridge } from './knight';
 
 export const CONSOLE_ABI_VERSION = '1.0.0';
 
@@ -23,12 +25,158 @@ export interface CartridgeManifest {
 }
 
 const BUILT_IN_FACTORIES: (() => Cartridge)[] = [
+  createKnightCartridge,
+  createWalkCartridge,
+  createTemplateCartridge,
   createStarPatrolCartridge,
   createTinyRogueCartridge,
   createSnake99Cartridge,
-  createPocketJumpCartridge,
-  createTemplateCartridge
+  createPocketJumpCartridge
 ];
+
+const ASSET_LIMITS = {
+  cellMax: 64,
+  framesMax: 64,
+  rowsMax: 16,
+  fpsMax: 60,
+  fileBytes: 32 * 1024,
+  cartBytes: 256 * 1024
+};
+const PNG_PREFIX = 'data:image/png;base64,';
+
+export const loadCartridgeAssets = (cart: Cartridge): Promise<Record<string, StripAsset>> => {
+  const specs = cart.assets;
+  if (!specs || typeof specs !== 'object') return Promise.resolve({});
+
+  const ids = Object.keys(specs);
+  let total = 0;
+
+  try {
+    ids.forEach(id => {
+      const s = specs[id];
+      if (!/^[A-Za-z0-9_-]+$/.test(id)) throw new Error(`${cart.id}/${id}: BAD ID`);
+      if (!s || typeof s !== 'object') throw new Error(`${cart.id}/${id}: SPEC MUST BE AN OBJECT`);
+      const isDataUri = typeof s.src === 'string' && s.src.startsWith(PNG_PREFIX);
+      const isPath = typeof s.src === 'string' && (s.src.endsWith('.png') || s.src.includes('.png'));
+      if (!isDataUri && !isPath) {
+        throw new Error(`${cart.id}/${id}: PNG DATA URI OR PNG PATH ONLY`);
+      }
+      if (!Number.isInteger(s.cw) || s.cw < 1 || s.cw > ASSET_LIMITS.cellMax) {
+        throw new Error(`${cart.id}/${id}: cw MUST BE WHOLE NUMBER 1 TO ${ASSET_LIMITS.cellMax}`);
+      }
+      if (!Number.isInteger(s.ch) || s.ch < 1 || s.ch > ASSET_LIMITS.cellMax) {
+        throw new Error(`${cart.id}/${id}: ch MUST BE WHOLE NUMBER 1 TO ${ASSET_LIMITS.cellMax}`);
+      }
+      if (!Number.isInteger(s.frames) || s.frames < 1 || s.frames > ASSET_LIMITS.framesMax) {
+        throw new Error(`${cart.id}/${id}: frames MUST BE WHOLE NUMBER 1 TO ${ASSET_LIMITS.framesMax}`);
+      }
+      if (s.rows !== undefined && (!Number.isInteger(s.rows) || s.rows < 1 || s.rows > ASSET_LIMITS.rowsMax)) {
+        throw new Error(`${cart.id}/${id}: rows MUST BE WHOLE NUMBER 1 TO ${ASSET_LIMITS.rowsMax}`);
+      }
+      const bytes = isDataUri ? Math.floor(((s.src.length - PNG_PREFIX.length) * 3) / 4) : 2048;
+      if (bytes > ASSET_LIMITS.fileBytes) {
+        throw new Error(`${cart.id}/${id}: FILE IS ${bytes} BYTES, LIMIT ${ASSET_LIMITS.fileBytes}`);
+      }
+      total += bytes;
+    });
+
+    if (total > ASSET_LIMITS.cartBytes) {
+      throw new Error(`ART IS ${total} BYTES, LIMIT ${ASSET_LIMITS.cartBytes}`);
+    }
+  } catch (e) {
+    return Promise.reject(e);
+  }
+
+  const decodeImage = (name: string, src: string): Promise<HTMLImageElement> =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      let settled = false;
+      const onSuccess = () => {
+        if (!settled) {
+          settled = true;
+          resolve(img);
+        }
+      };
+      const onError = (err?: unknown) => {
+        if (!settled) {
+          settled = true;
+          reject(new Error(`${name}: IMAGE DID NOT DECODE ${err ? String(err) : ''}`.trim()));
+        }
+      };
+      img.onload = onSuccess;
+      img.onerror = onError;
+      img.src = src;
+      if (img.complete && img.naturalWidth > 0) {
+        onSuccess();
+      }
+    });
+
+  const makeStrip = (id: string, s: StripAssetSpec, img: HTMLImageElement): StripAsset => {
+    const { cw, ch, frames } = s;
+    const rows = s.rows || 1;
+    const n = frames * rows;
+    const fps = s.fps || 0;
+    const ax = s.ax || 0;
+    const ay = s.ay || 0;
+    const sheet = document.createElement('canvas');
+    sheet.width = img.width;
+    sheet.height = img.height;
+    const sg = sheet.getContext('2d');
+    if (sg) {
+      sg.imageSmoothingEnabled = false;
+      sg.drawImage(img, 0, 0);
+    }
+
+    return {
+      id,
+      cw,
+      ch,
+      frames,
+      rows,
+      fps,
+      frameAt: (t: number) => (fps > 0 ? Math.floor(t * fps) % n : 0),
+      draw: (g: CanvasRenderingContext2D, i: number, x: number, y: number, flipX?: boolean) => {
+        const f = Math.floor(i) % n;
+        const fi = f < 0 ? f + n : f;
+        const sx = (fi % frames) * cw;
+        const sy = Math.floor(fi / frames) * ch;
+        const px = Math.round(x);
+        const dy = Math.round(y) - ay;
+        if (!flipX) {
+          g.drawImage(sheet, sx, sy, cw, ch, px - ax, dy, cw, ch);
+          return;
+        }
+        g.save();
+        g.translate(px, 0);
+        g.scale(-1, 1);
+        g.drawImage(sheet, sx, sy, cw, ch, -ax, dy, cw, ch);
+        g.restore();
+      }
+    };
+  };
+
+  return Promise.all(
+    ids.map(id =>
+      decodeImage(`${cart.id}/${id}`, specs[id].src).then(img => {
+        const s = specs[id];
+        const w = s.cw * s.frames;
+        const h = s.ch * (s.rows || 1);
+        if (img.width !== w || img.height !== h) {
+          throw new Error(
+            `${cart.id}/${id}: IMAGE IS ${img.width}x${img.height}, EXPECTED ${w}x${h}`
+          );
+        }
+        return makeStrip(id, s, img);
+      })
+    )
+  ).then(list => {
+    const lib: Record<string, StripAsset> = {};
+    list.forEach(st => {
+      lib[st.id] = st;
+    });
+    return lib;
+  });
+};
 
 const DYNAMIC_CACHE_KEY = 'minuteman_dynamic_carts_cache';
 const DYNAMIC_MANIFEST_KEY = 'minuteman_dynamic_manifest';
@@ -268,7 +416,8 @@ class CartridgeRegistry {
         playTone: rawSurface.audio.playTone || (() => {})
       },
       save: rawSurface.save || (() => false),
-      load: rawSurface.load || (() => null)
+      load: rawSurface.load || (() => null),
+      assets: rawSurface.assets || {}
     };
   }
 }
